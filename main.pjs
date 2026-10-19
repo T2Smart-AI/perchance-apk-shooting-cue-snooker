@@ -1,0 +1,223 @@
+// ============================================================
+//  SHOOTING BALL  -  a faithful 3D pool/billiards recreation
+//  Tunables live in this file. Game logic lives in src/*.js
+// ============================================================
+
+$meta
+  title = Shooting Ball
+  description = A relaxing 3D billiard game with real physics. Sink every ball, collect cues, and clear 1000+ hand-set levels.
+  image = ./media/efe37a769e01.jpg
+  tags = billiards, pool, 3d, game, physics, cue, ball, relaxing, levels
+
+kv = {import:kv-plugin}
+
+gameInfo
+  title = Shooting Ball
+  version = 1.0.0
+  tagline = A relaxing 3D billiard game with real physics
+  levelsPerChapter = 20
+  chapters = 50
+
+economy
+  startingCoins = 500
+  startingGems = 30
+  startingHearts = 5
+  maxHearts = 5
+  heartRefillMinutes = 20
+  coinsPerBall = 60
+  coinsPerLevel = 150
+  gemsPerChapterReward = 5
+  starBonus = 100
+  firstClearBonus = 50
+
+physics
+  gravity = 9.8
+  muSlide = 0.28
+  muRoll = 0.09
+  kDrag = 0.24
+  muSpin = 0.8
+  muSpinStop = 7.0
+  muBall = 0.06
+  eBall = 0.95
+  eCushion = 0.8
+  muCushion = 0.22
+  maxSpeed = 13
+  hitPower = 1.15 // global shot strength multiplier (+15% on every hit)
+  restSpeed = 0.012
+  restSpin = 0.35
+  simulateSpeed = 1.0
+  stepDt = 0.008
+
+// Aiming feel -----------------------------------------------------------------
+// dragGain        - how far the aim turns per unit of pointer motion around the
+//                   cue ball. 1 = old 1:1 feel; lower = slower/finer aiming.
+// maxAngles      - max number of straight "directions" the ball-direction
+//                   prediction may trace (3 = the shot direction plus at most
+//                   two cushion bounces). Also caps how many recommended
+//                   potting angles are calculated.
+aiming
+  dragGain = 0.45
+  maxAngles = 3
+
+table
+  halfLength = 1.27
+  halfWidth = 0.635
+  ballRadius = 0.034
+  pocketRadius = 0.068
+  sidePocketRadius = 0.062
+  cornerMouth = 0.093
+  sideMouth = 0.076
+  pocketInset = 0.012
+  railWidth = 0.115
+  cushionDepth = 0.05
+  cushionHeight = 0.045
+  railHeight = 0.055
+
+// ------------------------------------------------------------------
+//  CUES  (rank D < C < B < A < S < SS < SSS)
+//  power    - shot power multiplier
+//  aimBounces - extra cushion bounces added to the aiming help (Basic/Advanced
+//               level is chosen by the player in Settings -> Aiming help)
+//  assist   - cue bonus: adds one further rail bounce to the aim prediction
+//  spin     - english/spin strength multiplier
+//  cost     - price (currency = coins unless gems = true)
+//  wood/tip - colours for the 3d model
+// ------------------------------------------------------------------
+cues
+  starter
+    name = Maple Starter
+    rank = D
+    power = 1
+    aimBounces = 0
+    assist = true
+    spin = 0.8
+    coinBonus = 1
+    cost = 0
+    wood = #b98a4f
+    wrap = #5b3b22
+  ash
+    name = Ash Runner
+    rank = C
+    power = 1.06
+    aimBounces = 0
+    assist = true
+    spin = 0.9
+    coinBonus = 1.05
+    cost = 600
+    wood = #c79a63
+    wrap = #2f2418
+  oak
+    name = Oak Striker
+    rank = C
+    power = 1.12
+    aimBounces = 1
+    assist = true
+    spin = 0.95
+    coinBonus = 1.1
+    cost = 1400
+    wood = #a5743f
+    wrap = #3d2a18
+  carbon
+    name = Carbon Edge
+    rank = B
+    power = 1.2
+    aimBounces = 2
+    assist = true
+    spin = 1.05
+    coinBonus = 1.15
+    cost = 3200
+    wood = #2b2f36
+    wrap = #0e1116
+  jade
+    name = Jade Fortune
+    rank = B
+    power = 1.28
+    aimBounces = 2
+    assist = true
+    spin = 1.12
+    coinBonus = 1.2
+    cost = 6500
+    wood = #2f8f6a
+    wrap = #14402f
+  sapphire
+    name = Sapphire Emperor
+    rank = A
+    power = 1.38
+    aimBounces = 3
+    assist = true
+    spin = 1.22
+    coinBonus = 1.3
+    cost = 12000
+    wood = #2a5bd7
+    wrap = #10204f
+  crimson
+    name = Crimson Comet
+    rank = A
+    power = 1.48
+    aimBounces = 3
+    assist = true
+    spin = 1.3
+    coinBonus = 1.4
+    cost = 20000
+    wood = #c0272d
+    wrap = #4a0b0e
+  aurum
+    name = Aurum Regalia
+    rank = S
+    power = 1.6
+    aimBounces = 4
+    assist = true
+    spin = 1.4
+    coinBonus = 1.55
+    cost = 45
+    gems = true
+    wood = #e8bb4b
+    wrap = #7a5a12
+  plasma
+    name = Plasma Vector
+    rank = S
+    power = 1.72
+    aimBounces = 5
+    assist = true
+    spin = 1.5
+    coinBonus = 1.7
+    cost = 90
+    gems = true
+    wood = #16e0e6
+    wrap = #0a4d52
+  void
+    name = Void Sovereign
+    rank = SS
+    power = 1.88
+    aimBounces = 6
+    assist = true
+    spin = 1.65
+    coinBonus = 1.85
+    cost = 180
+    gems = true
+    wood = #2a0f4a
+    wrap = #120522
+  solaris
+    name = Solaris Prime
+    rank = SS
+    power = 2.02
+    aimBounces = 7
+    assist = true
+    spin = 1.8
+    coinBonus = 2
+    cost = 320
+    gems = true
+    wood = #ff9b1f
+    wrap = #7a3f04
+  chronos
+    name = Chronos Eternal
+    rank = SSS
+    power = 2.2
+    aimBounces = 8
+    assist = true
+    spin = 2
+    coinBonus = 2.25
+    cost = 600
+    gems = true
+    wood = #ffffff
+    wrap = #b8b8c8
