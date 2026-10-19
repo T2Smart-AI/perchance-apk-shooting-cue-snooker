@@ -3,7 +3,7 @@
 Moteur de simulation de billard et de tir de précision.
 *Billiard simulation engine and precision shooting tool.*
 
-**[Démo Live](https://T2Smart-AI.github.io/perchance-apk-shooting-cue-snooker/)**
+https://t2smart-ai.github.io/perchance-apk-shooting-cue-snooker/
 
 ## 🚀 Fonctionnalités
 
