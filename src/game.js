@@ -1,4 +1,4 @@
-import * as THREE from "https://esm.sh/three@0.170.0";
+import * as THREE from "../vendor/p2gx5c-three_0.170.0.js";
 import { createRenderer, createEnvironment, createLights, fitPerspectiveCamera, makeSkyDome, disposeTree } from "./gfx.js";
 import { buildTable, TABLE_DEFAULTS } from "./table.js";
 import { getTheme, buildDecor } from "./themes.js";

@@ -1,17 +1,17 @@
 # apk-shooting-cue-snooker
 
-Moteur de simulation de billard et de tir de précision.
-*Billiard simulation engine and precision shooting tool.*
+Simulateur de précision pour le billard snooker.
+*Precision snooker shooting simulator featuring advanced physics and cue customization.*
 
-https://t2smart-ai.github.io/perchance-apk-shooting-cue-snooker/
+[🕹️ Démo en direct](https://T2Smart-AI.github.io/perchance-apk-shooting-cue-snooker/)
 
 ## 🚀 Fonctionnalités
 
-- **Gestion du jeu** : Contrôles de lecture (Pause), progression et réinitialisation.
-- **Précision du tir** : Ajustements fins (Fine ◀/▶) et système de verrouillage (Lock).
-- **Navigation** : Accès direct au magasin de queues (Cue Shop), aux missions et aux bonus.
-- **Configuration** : Modes de difficulté (Basic/Advanced) et réglages de physique (Auto/High/Low).
-- **Guide** : Section "How to play" intégrée.
+- **Gestion du Jeu** : Contrôles de lecture (Pause), aide (?) et réinitialisation de la progression.
+- **Précision du Tir** : Système de réglage fin (Fine ◀/▶) et verrouillage de la cible (Lock).
+- **Personnalisation** : Accès au magasin de queues (Cue Shop) et réglages techniques (⚙).
+- **Progression** : Modes Mission et Bonus pour tester vos compétences.
+- **Configuration Physique** : Paramétrage des modes (Basic, Advanced, Auto) et niveaux d'intensité (High, Low).
 
 ## 🛠️ Démarrage Rapide
 
@@ -21,48 +21,42 @@ Lancer un serveur local pour tester l'application :
 python3 -m http.server
 ```
 
-## 🕹️ Utilisation
+## 🎮 Guide d'Utilisation
 
 | Contrôle | Rôle |
 | :--- | :--- |
-| `❚❚` | Pause / Reprise |
-| `?` | Aide / Instructions |
-| `◀ Fine` / `Fine ▶` | Ajustement précis de la trajectoire |
-| `◎ Lock` | Verrouillage de la visée |
-| `PLAY` | Lancer une partie |
+| `PLAY` | Lance la partie |
 | `CUE SHOP` | Personnalisation de l'équipement |
-| `MISSIONS` | Objectifs de jeu |
-| `BONUS` | Récompenses et extras |
-| `Basic / Advanced` | Sélection du niveau de difficulté |
-| `Auto / High / Low` | Réglage de la physique des impacts |
-| `Reset progress` | Réinitialisation complète des données |
+| `MISSIONS` | Accès aux défis |
+| `Fine ◀ / ▶` | Ajustement précis de la trajectoire |
+| `Lock` | Fixe la position de visée |
+| `Basic / Advanced / Auto` | Sélection du mode d'assistance physique |
+| `Reset progress` | Efface les sauvegardes locales |
 
-## ⚙️ Fonctionnement
+## ⚙️ Fonctionnement Technique
 
-L'application est un site statique utilisant l'API **Canvas** pour le rendu graphique et la simulation physique. 
+L'application est un site statique utilisant l'élément `<canvas>` pour le rendu graphique et une architecture modulaire en JavaScript.
 
-L'intelligence artificielle et la persistance des données sont gérées via :
-- **Puter.js & Pollinations** : Intégration d'IA sans clé API (limites gratuites de 30s à 45s).
-- **kv-plugin** : Gestion du stockage des données utilisateur.
+- **Moteur Physique** : Géré par `src/physics.js`.
+- **Intelligence Artificielle** : Intégration via **Puter.js** et **Pollinations**, soumise à des limites gratuites de 30s/45s.
+- **Persistance** : Utilisation du `kv-plugin` pour la sauvegarde des données.
 
 ## 📂 Structure du Projet
 
-- `src/main.js` : Cœur de l'application.
-- `src/physics.js` : Moteur de collision et trajectoires.
-- `src/gfx.js` & `src/ui.js` : Rendu visuel et interface utilisateur.
-- `src/table.js` & `src/levels.js` : Configuration des tables et niveaux.
-- `src/audio.js` : Gestion du son et des musiques (`menu-lounge.mp3`, `play-loop.mp3`).
-- `src/save.js` : Exportation et sauvegarde des données.
+- `src/core/` : Logique principale (`main.js`).
+- `src/render/` : Gestion du rendu et de l'interface (`gfx.js`, `ui.js`).
+- `src/audio/` : Gestion du son et musiques d'ambiance.
+- `src/` : Modules de support (textures, tables, niveaux, RNG).
+- `src/tools/` : Utilitaires de test et de régression.
 
-## 🛠️ Configuration & Déploiement
+## 🛠️ Configuration
 
-### Configuration
-Le comportement du système peut être ajusté via le fichier `adapters.js` pour modifier les interactions entre le moteur et l'UI.
+Les adaptations de comportement et les paramètres système sont configurés dans le fichier `adapters.js`.
 
-### Déploiement
-Le projet est optimisé pour **GitHub Pages**.
-1. Pousser le code sur un dépôt GitHub.
-2. Activer GitHub Pages dans les paramètres du dépôt.
+## 🚀 Déploiement
+
+L'application est optimisée pour un déploiement via **GitHub Pages**.
 
 ## 📄 Licence
-Ce projet est sous licence **MIT**.
+
+Distribué sous licence **MIT**.

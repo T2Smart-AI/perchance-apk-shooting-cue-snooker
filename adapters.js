@@ -43,4 +43,23 @@
   window.store = store;
   window.genererTexteIA = aiText;
   window.genererUrlImageIA = aiImageUrl;
+  // 2026-10-19g : l'echec d'un <script type=module> ne laisse AUCUNE trace
+  // window (event sur l'element uniquement) et fige les jeux sur leur loader.
+  // Capteur en capture, silencieux si tout va bien : bandeau + console.warn.
+  window.addEventListener('error', function (e) {
+    var t = e && e.target;
+    if (!t || t === window || t === document) return;
+    var url = (t.src || t.href || '');
+    if (!url) return;
+    try { console.warn('[px-export] resource failed to load:', url); } catch (x) {}
+    try {
+      var b = document.getElementById('pxLoadErr');
+      if (!b) {
+        b = document.createElement('div'); b.id = 'pxLoadErr';
+        b.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:999999;background:#3a1111;color:#ffd7d7;border:1px solid #a33;border-radius:8px;padding:8px 10px;font:12px/1.4 system-ui,sans-serif;max-width:70vw;';
+        (document.body || document.documentElement).appendChild(b);
+      }
+      b.textContent = 'Ressource introuvable / failed to load: ' + url;
+    } catch (x) {}
+  }, true);
 })();

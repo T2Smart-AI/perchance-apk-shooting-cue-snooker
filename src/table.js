@@ -1,4 +1,4 @@
-import * as THREE from "https://esm.sh/three@0.170.0";
+import * as THREE from "../vendor/p2gx5c-three_0.170.0.js";
 import { feltTexture, feltNormal, railShadowTexture, clothRoughness, woodTexture, textDecalTexture } from "./textures.js";
 
 export const TABLE_DEFAULTS = {
