@@ -1,0 +1,12 @@
+# Milestones — Shooting Ball studio adoption
+# Done-when is measured, never claimed. Status: done | active | queued.
+
+milestones:
+  - { id: m1, name: Foundation, done_when: game builds + boots with no errors, status: done }
+  - { id: m2, name: Closed-loop coding, done_when: " headless suite fixes a real defect (validity gate, recoverable pots)", status: done }
+  - { id: m3, name: Playable prototype, done_when: scripted reference player completes the core loop on sampled levels, status: done }
+  - { id: m4, name: Asset pipeline, done_when: manifest lists every asset with source + license, zero manual repairs, status: active }
+  - { id: m5, name: Content generation, done_when: 1000 levels + 200 bonus validated (opening-pot + clearability gates), status: done }
+  - { id: m6, name: Quality and release, done_when: adversarial suite + release verifier green, clean-env report written, status: active }
+  - { id: m7, name: Visual direction freeze, done_when: art_direction.md approved + 12-theme capture matrix baselined, status: active }
+  - { id: m8, name: Whole-experience pass, done_when: scripted menu-to-bonus UI walk passes on phone + desktop with no errors, status: queued }

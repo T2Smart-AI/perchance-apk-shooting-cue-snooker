@@ -272,8 +272,10 @@ export class UI {
     this.segSet("setSfx", s.sfx === false ? "off" : "on");
     this.segSet("setMusic", s.music === false ? "off" : "on");
     this.segSet("setAssist", normalizeAimHelp(s.aimHelp ?? s.assistMode));
+    this.segSet("setShoot", s.shootMode === "twostep" ? "twostep" : "release");
     this.segSet("setQuality", s.quality ?? "auto");
     this.showScreen("settingsScreen");
+    this.refreshAudit();
     const bind = (id, fn) => {
       const ctn = document.getElementById(id);
       if (!ctn || ctn.dataset.bound) return;
@@ -315,6 +317,35 @@ export class UI {
       this.segSet("setQuality", v);
       sfx.click();
     });
+    bind("setShoot", (v) => {
+      const mode = v === "twostep" ? "twostep" : "release";
+      this.save.state.shootMode = mode;
+      this.game.shootMode = mode;
+      this.game.power = 0;
+      this.setPower(0);
+      this.setHint();
+      this.save.persist();
+      this.segSet("setShoot", mode);
+      sfx.click();
+    });
+  }
+
+  /* Studio audit panel: the [audit] checklist is rendered by the engine from
+   * {import:auto-game-studio}; this only upgrades it to HTML if needed and
+   * pins the last measured release report next to it. Informational only. */
+  async refreshAudit() {
+    try {
+      const list = document.getElementById("auditList");
+      const g = globalThis.root;
+      if (list && g && typeof g.audit === "string" && list.textContent.includes("<br>")) {
+        list.innerHTML = g.audit;
+      }
+      const pre = document.getElementById("auditReport");
+      if (pre) {
+        const r = await fetch("src/reports/release-1.txt", { cache: "no-store" });
+        pre.textContent = r.ok ? (await r.text()).trim() : "report unavailable in this preview";
+      }
+    } catch (e) { /* never break settings over the audit panel */ }
   }
 
   confirmResetProgress() {
@@ -380,6 +411,11 @@ export class UI {
   }
 
   defaultHint() {
+    if (this.game?.twoStep?.()) {
+      return this.isTouch()
+        ? "Drag on the table to aim, pull the power bar & release to shoot"
+        : "Drag to aim · power bar / ↑ ↓ + Space to shoot · wheel = fine aim";
+    }
     return this.isTouch()
       ? "Drag on the table to aim, release to shoot"
       : "Drag to aim & shoot · ← → fine aim · Space to shoot";
@@ -575,14 +611,28 @@ export class UI {
     };
     bar.addEventListener("pointerdown", (e) => {
       active = true;
-      bar.setPointerCapture?.(e.pointerId);
+      try { bar.setPointerCapture?.(e.pointerId); } catch { /* synthetic events */ }
       set(e);
       e.preventDefault();
     });
     bar.addEventListener("pointermove", (e) => {
       if (active) { set(e); e.preventDefault(); }
     });
-    const up = () => { active = false; };
+    /* Two-step mode: the power bar is the trigger — releasing it fires the
+     * shot when enough power was pulled, otherwise the pull is cancelled
+     * (Esc works too, via the game's key handler resetting power). In
+     * classic 1-step mode the bar only sets the power and never fires. */
+    const up = () => {
+      if (!active) return;
+      active = false;
+      if (this.game.twoStep?.() && this.game.state === "aim") {
+        if (this.game.power >= 0.06) this.game.shoot();
+        else {
+          this.game.power = 0;
+          this.setPower(0);
+        }
+      }
+    };
     bar.addEventListener("pointerup", up);
     bar.addEventListener("pointercancel", up);
   }
@@ -899,16 +949,16 @@ export class UI {
         <h3>How to play</h3>
         <ul>
           <li><b>Drag</b> on the table to aim — pull back like a slingshot, release to shoot.</li>
-          <li>Drag further for more <b>power</b>; the bar at the bottom shows it. Tap the table to nudge your aim.</li>
+          <li>Drag further for more <b>power</b>; the bar at the bottom shows it. Tap the table to nudge your aim. Prefer to aim and shoot separately? Settings → <b>Shoot control → 2-step</b>: the table drag then only aims, and you pull the <b>power bar</b> and release to fire.</li>
           <li>Use the <b>spin ball</b> (bottom-left) for english: side spin curves off the rail, top spin follows through.</li>
-          <li>The <b>green</b> line shows where the cue ball will go — it ends where it strikes a ball. The <b>pink</b> line traces where that ball will travel, and turns <b>green into a pocket</b> when it is going in. At most three lines are drawn, all taken from a real simulation of your shot.</li>
-          <li><b>Aiming help</b> (Settings) has two levels — <b>Basic</b> shows the aim line, the ghost ball, the object ball's path and its pocket line; <b>Advanced</b> adds a gold <b>recommended angle</b> your aim gently snaps to. The <b>◎ Lock</b> button jumps straight to the nearest clear pot.</li>
+          <li>The <b>green</b> line shows where the cue ball will go — it ends where it strikes a ball. The <b>pink</b> line traces where that ball will travel, and turns <b>green into a pocket</b> when it is going in. At most three lines are drawn, all taken from a real simulation of your shot. Pockets glow <b>green</b> when they will take a legal ball and <b>red</b> when they would swallow the cue ball or a ball that is a foul to sink now; a <b>red ✕</b> marks a first contact that would be a foul if it drops.</li>
+          <li><b>Aiming help</b> (Settings) has two levels — <b>Basic</b> shows the aim line, the ghost ball, the object ball's path and its pocket line; <b>Advanced</b> adds a gold <b>recommended angle</b> your aim gently snaps to (only forgiving pots that survive a small aim error are recommended). The <b>◎ Lock</b> button jumps straight to the nearest clear pot.</li>
           <li>Sink every required ball within the <b>shot limit</b>. Fewer shots = more stars. Three fouls caps you at 1 star.</li>
           <li><b>Scratch</b> (sinking the cue ball) gives the opponent nothing — you get <b>ball in hand</b>, so drag to re-place it anywhere legal.</li>
           <li>Chain pots for a <b>combo</b> — each additional ball pays bonus coins.</li>
           <li>Objectives: ✱ clear the table, number order, a ball <b>last</b>, a <b>forbidden</b> ball, limited shots, or beat the clock. A ball sunk at the wrong moment (wrong order, the <b>last</b> ball too early, the <b>forbidden</b> ball) is <b>re-spotted and costs a foul</b> — recoverable, not instant defeat.</li>
           <li>Special balls: ★ <b>coins</b>, 💎 <b>gems</b>, +1 shot / +6s <b>time</b> balls and 💣 <b>bombs</b> that blast nearby balls.</li>
-          <li>${touch ? "Tap ❚❚ to pause." : "Keyboard: <b>← →</b> fine aim, <b>↑ ↓</b> power, <b>Space</b> shoot, <b>Esc/P</b> pause, <b>R</b> restart, <b>M</b> mute."}</li>
+          <li>${touch ? "Tap ❚❚ to pause." : "Keyboard: <b>← →</b> fine aim, <b>↑ ↓</b> power, <b>Space</b> shoot, <b>Esc/P</b> pause, <b>R</b> restart, <b>M</b> mute. The <b>mouse wheel</b> also fine-tunes the aim."}</li>
         </ul>
         <div class="cardBtns"><button class="bigBtn small" data-act="close">Got it</button></div>
       </div>`

@@ -671,6 +671,128 @@ export function woodTexture(color = "#6b4423", opts = {}) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Rail finishes (marble / carbon / brushed metal)                      */
+/* ------------------------------------------------------------------ */
+
+export function marbleTexture(color = "#e8e4da", opts = {}) {
+  const { seed = 21, W = 512, H = 256, vein = 1 } = opts;
+  const c = canvas(W, H);
+  const ctx = c.getContext("2d");
+  const base = new THREE.Color(color);
+  const rnd = mulberry32(seed * 2246822519 + 101);
+  const n1 = makeValueNoise(rnd, 7, 5);
+  const n2 = makeValueNoise(rnd, 13, 9);
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+  for (let y = 0; y < H; y++) {
+    const fy = y / H;
+    for (let x = 0; x < W; x++) {
+      const fx = x / W;
+      const warp = n1(fx, fy) * 3.1 + n2(fx, fy) * 0.7;
+      const v1 = Math.pow(1 - Math.abs(Math.sin((fx * 4 + warp) * Math.PI)), 10 * vein);
+      const warp2 = n2(fy, fx) * 2.2;
+      const v2 = Math.pow(1 - Math.abs(Math.sin((fy * 6 + fx * 2 + warp2) * Math.PI)), 22) * 0.6;
+      const grain = 0.94 + 0.1 * n2(fx * 2, fy * 2);
+      let r = base.r * grain + v1 * 0.35 + v2 * 0.22;
+      let g = base.g * grain + v1 * 0.33 + v2 * 0.21;
+      let b = base.b * grain + v1 * 0.28 + v2 * 0.18;
+      const i = (y * W + x) * 4;
+      d[i] = Math.min(255, r * 255);
+      d[i + 1] = Math.min(255, g * 255);
+      d[i + 2] = Math.min(255, b * 255);
+      d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+export function carbonTexture(opts = {}) {
+  const { seed = 33, W = 256, H = 256, cell = 16 } = opts;
+  const c = canvas(W, H);
+  const ctx = c.getContext("2d");
+  const rnd = mulberry32(seed * 2246822519 + 202);
+  for (let j = 0; j < H / cell; j++) {
+    for (let i = 0; i < W / cell; i++) {
+      const horiz = (i + j) % 2 === 0;
+      const g = ctx.createLinearGradient(
+        horiz ? i * cell : i * cell, horiz ? 0 : j * cell,
+        horiz ? (i + 1) * cell : i * cell, horiz ? 0 : (j + 1) * cell
+      );
+      const l0 = 14 + rnd() * 8, l1 = 42 + rnd() * 14;
+      g.addColorStop(0, `rgb(${l0},${l0},${l0 + 4})`);
+      g.addColorStop(0.5, `rgb(${l1},${l1},${l1 + 5})`);
+      g.addColorStop(1, `rgb(${l0},${l0},${l0 + 4})`);
+      ctx.fillStyle = g;
+      ctx.fillRect(i * cell, j * cell, cell, cell);
+    }
+  }
+  ctx.strokeStyle = "rgba(0,0,0,.5)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= W / cell; i++) {
+    ctx.beginPath(); ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * cell); ctx.lineTo(W, i * cell); ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+export function brushedTexture(color = "#9aa2ad", opts = {}) {
+  const { seed = 44, W = 512, H = 128 } = opts;
+  const c = canvas(W, H);
+  const ctx = c.getContext("2d");
+  const base = new THREE.Color(color);
+  const rnd = mulberry32(seed * 2246822519 + 303);
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+  const colShade = new Float32Array(W);
+  for (let x = 0; x < W; x++) colShade[x] = 0.82 + rnd() * 0.36;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const streak = colShade[x] * (0.96 + 0.08 * rnd());
+      const i = (y * W + x) * 4;
+      d[i] = Math.min(255, base.r * streak * 255);
+      d[i + 1] = Math.min(255, base.g * streak * 255);
+      d[i + 2] = Math.min(255, base.b * streak * 255);
+      d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+function makeValueNoise(rnd, nw, nh) {
+  const grid = new Float32Array(nw * nh);
+  for (let i = 0; i < grid.length; i++) grid[i] = rnd();
+  return (fx, fy) => {
+    const gx = fx * nw, gy = fy * nh;
+    let x0 = Math.floor(gx);
+    const y0 = Math.floor(gy);
+    const tx = gx - x0, ty = gy - y0;
+    x0 = ((x0 % nw) + nw) % nw;
+    const x1 = (x0 + 1) % nw;
+    const yi = Math.min(nh - 1, Math.max(0, y0));
+    const yi1 = Math.min(nh - 1, yi + 1);
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+    const a = grid[yi * nw + x0], b = grid[yi * nw + x1];
+    const e = grid[yi1 * nw + x0], f = grid[yi1 * nw + x1];
+    const top = a + (b - a) * sx, bot = e + (f - e) * sx;
+    return top + (bot - top) * sy;
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /*  Misc                                                               */
 /* ------------------------------------------------------------------ */
 

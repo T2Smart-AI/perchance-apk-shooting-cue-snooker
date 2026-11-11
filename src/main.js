@@ -82,6 +82,7 @@ ui.init();
 game.assistMode = save.state.assistMode ?? "auto";
 game.aimHelp = normalizeAimHelp(save.state.aimHelp ?? save.state.assistMode);
 save.state.aimHelp = game.aimHelp;
+game.shootMode = save.state.shootMode === "twostep" ? "twostep" : "release";
 game.applyQuality(save.state.quality ?? "auto");
 game.aimDragGain = num(root?.aiming?.dragGain, 0.45);
 game.aimMaxAngles = num(root?.aiming?.maxAngles, 3);

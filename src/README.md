@@ -9,11 +9,15 @@ Live page: `https://perchance.org/apk-shooting-cue-snooker`
 ## Controls
 
 - Drag anywhere on the table to aim (drag away from the cue ball to build power), release to shoot.
-- `←` / `→` (or the Fine ◀ / ▶ buttons) nudge the aim angle by a small amount; **◎ Lock** jumps straight to the nearest verified pot.
+- `Settings → Shoot control → 2-step` separates the two gestures: the table drag then only aims (its release never fires) — pull the **power bar** and release to shoot (a tiny pull cancels instead). `Space` / `↑ ↓` work in both modes.
+- `←` / `→` (or the Fine ◀ / ▶ buttons) nudge the aim angle by a small amount; the **mouse wheel** steps it ~0.09° per notch; **◎ Lock** jumps straight to the nearest verified pot.
 - `Settings → Aiming help` switches the two help levels (Basic / Advanced) — see below.
 - `Space` shoots at the current power. The power slider shows / sets power; the SPIN widget sets cue english (draw/follow/side).
 - `Esc` / pause button opens the pause menu.
 - `M` toggles all audio; `R` restarts the current level; `P`/`Esc` pause.
+- `Settings → Studio audit` shows the imported 10-point review checklist
+  (live from `{import:auto-game-studio}`, rendered never edited) next to the
+  last measured release report (`src/reports/release-1.txt`, fetched at runtime).
 
 ## Daily missions & career stats
 
@@ -56,7 +60,7 @@ high-level config (metadata, economy, physics constants, table dims, cue catalog
 | `src/rng.js` | `mulberry32` + `hashString`, pure and dependency-free so the level generator and `src/tools` can run headless (`textures.js` re-exports them for the renderer side). |
 | `src/levels.js` | Procedural level generator. `CHAPTERS=50`, `LEVELS_PER_CHAPTER=20`, `TOTAL_LEVELS=1000`; `getLevel(n)` returns ball layout, cue spot, theme, specials and an `objective` (order / last / forbid / within / group / clear). Deterministic per level number, and **validity-gated**: layouts without a legal opening pot are re-rolled (see *Level validity gate*). |
 | `src/modes.js` | Bonus stages: `BONUS_EVERY=5`, `TOTAL_BONUS=200`, `isBonusMilestone/bonusIdFor/milestoneFor`, the 8 `BONUS_MODES` (palettes, goals, chests and per-mode hooks) and `getBonusLevel(k, P)`. See **Bonus stages**. |
-| `src/themes.js` | The 12 table themes (felt/cushion/rail colours, light scale, key light colour/intensity, sky-dome params). Theme index = `chapter % 12`. |
+| `src/themes.js` | The 12 table themes (felt/cushion colours, rail finish + trim, pocket/rim metals, sky, lights, ground and decor props). Theme index = `chapter % 12`. Rail finishes: `wood` (species + seed, optional `stretch` bamboo grain), `lacquer` (piano black), `marble` (veined), `carbon` (twill weave), `metal` (brushed), `pearl` (glossy light stone). Rail trim: `led` (glow strips on the rail tops, routed around pockets and the ball-return trough), `inlay` (metallic pinstripe following the rail top), `studs` (instanced metal/gem studs along the outer rail edge). LED themes also get glowing diamond sights. |
 | `src/table.js` | Builds the table geometry: rails (the +X rail is extruded past the playing surface to house the **ball-return trough**), cushion profiles, pocket rims, diamond sights, apron/legs. Also adds the cloth wordmark decal and the rail contact-shadow (AO) overlay. Returns `table.rack` (glass trough: `slots`, `centerX`, `frontX`, …). |
 | `src/textures.js` | Procedural canvas textures (felt + felt normal map, rail contact shadow, wood/marble rails, ball numbers, decals, blob shadows) — no external image assets. |
 | `src/gfx.js` | Renderer + environment: `createRenderer` (preserveDrawingBuffer, PCFSoft shadows, sRGB, NeutralToneMapping), `createEnvironment`, `createLights`, `makeSkyDome`, `fitPerspectiveCamera`, `disposeTree`. |
@@ -65,8 +69,9 @@ high-level config (metadata, economy, physics constants, table dims, cue catalog
 | `src/missions.js` | Daily-missions model: `dayKey`, `msUntilReset`, `rollDaily` (3 distinct missions/day, deterministic from the UTC date), `describe`, `addProgress`, `claimableCount`. |
 | `src/save.js` | Persistence over `kv-plugin`: coins, gems, hearts (+refill timer), `maxLevel`, per-level stars, owned/equipped cues, daily-claim state, `totalPotted`, settings (`sfx`/`music`/`quality`/`aimHelp`), the daily `missions` block and the `bonus` record map. Also exports `normalizeAimHelp()`. Mission helpers: `ensureMissions/progressMissions/claimMission/missionsClaimable/addPotted`; bonus helpers: `isBonusUnlocked/bonusRecord/bonusCleared/setBonusResult/bonusClearedCount`. |
 | `src/ui.js` | All DOM/HUD wiring: screens, toasts, modals, HUD numbers, power slider + knob (`setPower`), spin widget, map/shop/daily/missions rendering (`openMissions`/`renderMissions`), the career-stats panel, and the bonus UI (`#bonusBar`/`setBonusProgress`, `.bonusNode` map tiles, `playBonusEntry`, `openBonusIntro`, `showBonusResult`). |
-| `src/tools/*` | **Headless studio toolchain** (dev-only, not imported by the game): `bundle.js` (tiny ESM bundler), `harness.js` (gameplay bridge: reference player, solver, fuzz/determinism/perf probes), `levelcheck.js` (level validator), `regression.js` (test runner). See `src/tools/README.md` for how to run it and the **evidence ledger**. |
+| `src/tools/*` | **Headless studio toolchain** (dev-only, not imported by the game): `bundle.js` (tiny ESM bundler), `harness.js` (gameplay bridge: reference player, solver, fuzz/determinism/perf probes), `levelcheck.js` (level validator), `regression.js` (test runner), `adversarial.js` (input spam, re-entry, corrupt saves, foul bursts…), `release.js` (file + manifest audit, suite aggregation, release report), `visual.js` (capture matrix, perceptual diff, scorecard). See `src/tools/README.md` for how to run it and the **evidence ledger**. |
 | `src/SPEC.md` | Durable game + toolchain specification (rules, balance, acceptance criteria, quality gates). |
+| `src/AGENTS.md` · `src/milestones.yaml` · `src/schemas/` · `src/design/` · `src/assets/` · `src/reports/` | **Studio project memory** (dev-only, versioned, not imported by the game): agent standing orders, milestone gates, level/theme/bonus/save JSON schemas, the frozen art-direction bible, the asset manifest (source + license per asset), and the decision log + verification reports. |
 
 ## Visuals / materials
 
@@ -100,6 +105,16 @@ image assets. The current material pass:
   reused (rotated) as the cue shaft map; balls are `MeshPhysicalMaterial` with
   `clearcoat: 1`, `roughness 0.055`, plus a `blobShadowTexture()` contact-shadow quad
   under each ball (`R*5.4`, updated per frame in `game.js`).
+- **Rails** — six finishes driven by each theme's `railStyle`: classic `wood`
+  grain (mahogany, driftwood, bamboo, walnut via colour + seed + `stretch`),
+  `lacquer` piano black, veined `marble` (`marbleTexture()`), `carbon` twill
+  weave (`carbonTexture()`), brushed `metal` (`brushedTexture()`), and glossy
+  light `pearl`. Light finishes carry a faint emissive lift so they never go
+  black under a dark sky. Every theme adds rail jewellery via `trim`: `led`
+  glow strips on the rail tops (segments routed around the pockets and the
+  ball-return trough), a metallic `inlay` pinstripe ringing the rail top, and
+  instanced metal/gem `studs` along the outer rail edge (one draw call). Cost
+  is ~7 draw calls / 0.02 ms per frame — measured zero fps impact.
 - When judging visuals in the editor preview, force `renderer.setPixelRatio(2)` and
   `resize()` first — the preview's devicePixelRatio is ~0.9 (editor scaling) and the
   default render looks blurry at that scale.
@@ -205,6 +220,15 @@ The guide draws **at most three lines**, each a real forward-simulated trajector
   is going in, otherwise (Advanced, while off-line) the amber `solutionRibbon` to the
   recommended ghost point.
 
+Pocket **outcome rings** (one overlay ring per pocket, hidden unless the prediction
+drops a ball there): **green** when the pocket will take a legal ball, **red** when
+it would swallow the cue ball (scratch) or a ball that is a foul to sink right now
+(wrong order / `last` too early / `forbid`). A pulsing red **✕** (`warnX`) sits on
+the first-contact ball when sinking it now would be a foul + re-spot. Both are
+driven by `predictShot().allPocketed` and `isPotClean()` (which mirrors `onPocket`
+exactly), so the warnings can never disagree with the ruling — and they are
+markers, not lines, so the three-line budget is untouched.
+
 - **Basic** (`helpLevel() === 1`) — the green aim line, the white ghost ball and its
   contact ring at the first ball hit, the pink object-ball trajectory, and the
   green pocket line when the ball is going in.
@@ -233,8 +257,8 @@ rather than on every drag), so the per-frame cost is negligible.
 
 `snapAim()` **magnetically locks** the aim onto the nearest solution angle when the
 player is within ~1.15°. This now works at **Basic** as well as Advanced (the fine
-◀/▶ buttons step 0.46°, so they land on it), and `Game.lockAim()` lets the **Lock**
-button jump straight there in one tap.
+◀/▶ buttons step 0.46°, the mouse wheel ~0.09°, so both land on it), and
+`Game.lockAim()` lets the **Lock** button jump straight there in one tap.
 
 ## Physics notes
 

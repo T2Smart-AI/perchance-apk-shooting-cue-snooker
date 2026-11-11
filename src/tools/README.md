@@ -14,6 +14,9 @@ the studio blueprint, adapted to this project.
 | `harness.js` | **Gameplay bridge.** `createState(levelNumber)` → real `PoolSim` + generated level; `shoot()`, `stepToRest()`, `applyOutcome()` (mirrors every objective rule in `game.js`), `potSolutions()` (the ghost-ball solver), `chooseShot()` (reference player policy), `autoPlay()`, `validateLevel()`, `report()`, `physicsFuzz()`, `determinismCheck()`, `perfProbe()`. |
 | `levelcheck.js` | **Content validator.** `validateLevel(n)` / `validateAll({step,from,to})`: every level must offer a legal pot on the opening shot and be clearable within its shot budget. |
 | `regression.js` | **Test runner.** `runRegression()` (physics invariants, determinism, validity sample, perf budgets) and `predictionCheck()` (the solver's pots really drop the ball and the drawn direction matches the simulation). |
+| `adversarial.js` | **Adversarial QA.** `runAdversarial()`: input spam, strike-while-moving, level re-entry determinism, boundary powers/spins, out-of-range level/bonus ids, corrupt save payloads, mission rotation sanity, multi-pot foul bursts, shot-budget edge. 92 checks, all green. |
+| `release.js` | **Release verifier.** `auditFiles()` (all shipped modules present), `auditManifest()` (licenses + paths), `auditSchemas()` (schemas parseable, $schema tags + required keys — drift detection), `verifyRelease()` (suites + sweep aggregation), `releaseReport()` (one-page text verdict, versioned under `src/reports/`). |
+| `visual.js` | **Visual QA matrix.** `quickMatrix()` / `fullMatrix()` (theme × view × viewport scenarios), `diffFrames()` (thresholded perceptual diff, never exact pixels), `frameLiveliness()` (blank/frozen-frame detector), `scoreShot()` (six-dimension art-direction scorecard). |
 
 Everything returns **typed results** (`{ok, cleared, reason, …}`), never console
 dumps — per the blueprint's "typed tool results, not console dumps" rule.
@@ -68,6 +71,26 @@ The fixes themselves, each justified by a measurement:
    it by accident.
 5. **`last` gets one spare shot** — its mark may legitimately have to be potted
    twice.
+6. **Cheater-Pool extraction** (aiming + 2-step shooting, all additive, defaults
+   unchanged): optional `Settings → Shoot control → 2-step` (table drag aims
+   only, power-bar pull-release fires); pocket outcome rings (green/red, from
+   `predictShot().allPocketed`) and an illegal-first-contact ✕ (from
+   `isPotClean()`, which mirrors `onPocket` exactly); mouse-wheel fine aim
+   (~0.09°/notch); solver robustness check (±0.3° re-simulation, forgiving pots
+   sort first). Measured: `runRegression()` ok, `predictionCheck()` 0
+   mismatches / 0°, full sweep unchanged at **930/1000 cleared, 9/1000 without
+   an opening pot**; live-verified 1-step drag-shoot, 2-step aim/no-fire +
+   bar-fire + cancel, wheel step exactly 0.0016 rad, Settings toggle +
+   persistence, phone + desktop captures (HUD fits, exactly 3 guide lines).
+7. **Studio adoption** (memory + QA + release layers, zero gameplay changes):
+   `AGENTS.md`, milestones, `schemas/*`, asset manifest (4 assets, licenses
+   ok), art-direction freeze, `decisions.log`. New headless suites found and
+   fixed 2 real bugs on first run: `getLevel(NaN)` → `#NaN` and
+   `getBonusLevel(k)` throwing without `P` (NaN-safe clamps + `P ?? TABLE_PARAMS`
+   in `levels.js`/`modes.js`). Measured after fix: adversarial **92/92**,
+   `verifyRelease()` all PASS, full sweep unchanged (**930/1000, 9/1000**);
+   visual quick-matrix 8/8 alive with 0 blocking defects (report versioned in
+   `src/reports/`); whole-experience UI walk green on phone + desktop.
 
 ## Known limits
 

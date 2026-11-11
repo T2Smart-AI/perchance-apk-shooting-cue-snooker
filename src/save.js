@@ -25,6 +25,7 @@ const DEFAULT_STATE = {
   quality: "auto",
   assistMode: "auto",
   aimHelp: "basic",
+  shootMode: "release",
   totalPotted: 0,
   seenHelp: false,
   missions: null,
@@ -49,6 +50,7 @@ export class Save {
           this.state.stars = stored.stars ?? {};
           this.state.cuesOwned = Array.isArray(stored.cuesOwned) ? stored.cuesOwned : ["starter"];
           this.state.aimHelp = normalizeAimHelp(stored.aimHelp ?? stored.assistMode);
+          if (stored.shootMode !== "twostep") this.state.shootMode = "release";
         }
       }
     } catch (e) {

@@ -504,7 +504,9 @@ export function levelSummary(level) {
 /* Deterministic, validity-gated level lookup: keep re-rolling the seeded layout
  * until the opening-shot gate passes (see above). */
 export function getLevel(number, P) {
-  number = Math.max(1, Math.min(TOTAL_LEVELS, Math.round(number)));
+  let n = Math.round(number);
+  if (!Number.isFinite(n)) n = 1;
+  number = Math.max(1, Math.min(TOTAL_LEVELS, n));
   const params = P ?? TABLE_PARAMS;
   let level = buildLevel(number, 0, params);
   for (let attempt = 1; attempt < GATE_ATTEMPTS; attempt++) {

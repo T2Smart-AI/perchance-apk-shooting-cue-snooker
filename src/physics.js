@@ -630,7 +630,9 @@ export class PoolSim {
    * for the cue ball and for the first object ball it strikes.
    *
    *   { cue: { path, potted, pocket },
-   *     object: null | { ballId, start, dir, ghost, cueDir, path, potted, pocket } }
+   *     object: null | { ballId, start, dir, ghost, cueDir, path, potted, pocket },
+   *     allPocketed: [{ ball: id, pocket }] — every ball the sim drops,
+   *       so the UI can tint pocket rings (green = good pot, red = bad). }
    *
    * `path` is a list of vertices (bounce / contact points), not a dense trail. */
   predictShot(cueId, dirX, dirZ, speed, spin = {}, opts = {}) {
@@ -753,6 +755,7 @@ export class PoolSim {
         pocket: pocketed.get(cueId)?.pocket ?? null,
       },
       object: null,
+      allPocketed: [...pocketed.entries()].map(([id, v]) => ({ ball: id, pocket: v.pocket })),
     };
     if (objId !== null) {
       const ob = g.balls.find((b) => b.id === objId);

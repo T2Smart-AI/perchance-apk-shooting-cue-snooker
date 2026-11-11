@@ -208,6 +208,10 @@ export class Game {
     this.assistMode = "auto";
     this.aimHelp = "basic";
     this.aimMaxAngles = 3;
+    /* Shoot control: "release" (classic 1-step: a table drag aims and its
+     * release fires) or "twostep" (table drag aims only; power is pulled
+     * separately on the power bar and its release fires). */
+    this.shootMode = "release";
     this._simAcc = 0;
     this.snapped = false;
     this._solKey = null;
@@ -326,6 +330,36 @@ export class Game {
     this.solRing.visible = false;
     this.guideGroup.add(this.solRing);
 
+    /* Pocket outcome rings (one per pocket): tinted by the live prediction —
+     * green = that pocket will take a legal ball, red = it will take the cue
+     * ball (scratch) or a ball that is a foul to sink right now. */
+    this.pocketRings = [];
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.Mesh(
+        new THREE.RingGeometry(0.07, 0.082, 40),
+        new THREE.MeshBasicMaterial({ color: 0x2ee66b, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide })
+      );
+      m.rotation.x = -Math.PI / 2;
+      m.renderOrder = 5;
+      m.visible = false;
+      this.guideGroup.add(m);
+      this.pocketRings.push(m);
+    }
+    /* Illegal-contact warning: an X over the ball the cue ball will strike
+     * first when sinking it right now would be a foul + re-spot (first
+     * contact itself is never a foul — this warns about the likely sink). */
+    this.warnX = new THREE.Group();
+    const xMat = new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide });
+    for (const a of [Math.PI / 4, -Math.PI / 4]) {
+      const bar = new THREE.Mesh(new THREE.PlaneGeometry(R * 2.6, R * 0.5), xMat);
+      bar.rotation.z = a;
+      this.warnX.add(bar);
+    }
+    this.warnX.rotation.x = -Math.PI / 2;
+    this.warnX.position.y = this.clothY + 0.002;
+    this.warnX.visible = false;
+    this.guideGroup.add(this.warnX);
+
     this.placeGhost = new THREE.Mesh(      new THREE.SphereGeometry(R * 0.98, 24, 16),
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false })
     );
@@ -435,6 +469,7 @@ export class Game {
     });
     this.sim.maxSpeed = (this.physics.maxSpeed ?? 13) * this.hitMul() * (this.cueDef.power ?? 1);
 
+    this.layoutPocketRings();
     const cs = level.cue ?? cueSpot(P);
     this.cueBall = this.sim.addBall(cs.x, cs.z, { r: P.ballRadius, data: { cue: true } });
     const cueMeshObj = this.makeBallMesh(null, null);
@@ -499,6 +534,43 @@ export class Game {
       return (o.group === "solids" ? SOL : STR).includes(b.number);
     }
     if (o.type === "forbid") return b.number !== o.ball;
+    return true;
+  }
+
+  twoStep() {
+    return this.shootMode === "twostep";
+  }
+
+  /* Fit the pocket outcome rings over the live pockets (called per level, so
+   * pocket geometry changes always match). */
+  layoutPocketRings() {
+    if (!this.pocketRings || !this.sim) return;
+    this.sim.pockets.forEach((p, i) => {
+      const m = this.pocketRings[i];
+      if (!m) return;
+      m.position.set(p.x, this.clothY + 0.002, p.z);
+      m.scale.setScalar((p.r + 0.012) / 0.082);
+      m.visible = false;
+    });
+  }
+
+  /* Would sinking this ball RIGHT NOW be clean (no foul + re-spot)? Mirrors
+   * onPocket exactly: wrong order, the last ball too early, or the forbidden
+   * ball all come back with a foul. Drives the pocket-ring colours and the
+   * illegal-contact X, so the warnings can never disagree with the ruling. */
+  isPotClean(bm) {
+    const o = this.level?.objective;
+    if (!o) return true;
+    const num = bm.number;
+    if (o.type === "order") {
+      const sorted = this.level.balls.map((b) => b.number).sort((a, b) => a - b);
+      return num === sorted[this.pottedOrderCount ?? 0];
+    }
+    if (o.type === "last" && num === o.ball) {
+      const others = this.ballMeshes.filter((b) => b.ball !== this.cueBall && !b.ball.potted && b.number !== o.ball).length;
+      return others === 0;
+    }
+    if (o.type === "forbid" && num === o.ball) return false;
     return true;
   }
 
@@ -653,6 +725,18 @@ export class Game {
     c.addEventListener("pointerup", (e) => this.onUp(e), opts);
     c.addEventListener("pointercancel", (e) => this.onUp(e), opts);
     window.addEventListener("keydown", (e) => this.onKey(e));
+    /* Mouse-wheel fine aim: one notch steps the aim ~0.09° (and lands on the
+     * magnetic lock via nudgeAim → snapAim). The page never scrolls, so the
+     * wheel is otherwise unused — preventing default is regression-free. */
+    c.addEventListener("wheel", (e) => {
+      if (this.state !== "aim" || this.paused || this.drag) return;
+      e.preventDefault();
+      let d = e.deltaY;
+      if (e.deltaMode === 1) d *= 33;
+      else if (e.deltaMode === 2) d *= 400;
+      d = Math.max(-300, Math.min(300, d));
+      if (d !== 0) this.nudgeAim(Math.sign(d) * 0.0016);
+    }, { passive: false });
   }
 
   pointerToPlane(e) {
@@ -667,10 +751,14 @@ export class Game {
     return { x: _v1.x, z: _v1.z };
   }
 
+  safeCapture(e) {
+    try { this.canvas.setPointerCapture?.(e.pointerId); } catch { /* synthetic events have no active pointer */ }
+  }
+
   onDown(e) {
     if (this.paused) return;
     if (this.state === "placing") {
-      this.canvas.setPointerCapture?.(e.pointerId);
+      this.safeCapture(e);
       this.placeDrag = { id: e.pointerId };
       const p = this.pointerToPlane(e);
       if (p) this.tryPlace(p);
@@ -678,7 +766,7 @@ export class Game {
       return;
     }
     if (this.state !== "aim") return;
-    this.canvas.setPointerCapture?.(e.pointerId);
+    this.safeCapture(e);
     this.drag = {
       id: e.pointerId,
       sx: e.clientX,
@@ -820,6 +908,12 @@ export class Game {
       this.drag.aim0 = this.aim;
       this.drag.acc = 0;
     }
+    /* Two-step mode: the table drag aims only — power comes from the power
+     * bar (pull and release to fire), so a drag release never shoots. */
+    if (this.twoStep()) {
+      this.emit("aim", { power: this.power, angle: this.aim });
+      return;
+    }
     const dx = e.clientX - this.drag.sx;
     const dy = e.clientY - this.drag.sy;
     const screenDist = Math.hypot(dx, dy);
@@ -852,6 +946,12 @@ export class Game {
       }
       this.power = 0;
       this.emit("aim", { power: 0, angle: this.aim });
+      return;
+    }
+    /* Two-step mode: aiming and power are separate gestures — a table-drag
+     * release only ever finishes the aim, it never fires. */
+    if (this.twoStep()) {
+      this.emit("aim", { power: this.power, angle: this.aim });
       return;
     }
     if (this.power > 0.06) this.shoot();
@@ -1689,12 +1789,23 @@ export class Game {
       if (dup) continue;
       const pr = sim.predictShot(cue.id, Math.cos(s.angle), Math.sin(s.angle), speed, { top: 0, side: 0 }, { cueBounces: 2, objBounces: 2, maxTime: 6, dt: SIM_DT });
       if (pr.object && pr.object.ballId === s.ball.id && pr.object.potted && pr.object.pocket) {
+        /* Robustness check: the pot must survive a ±0.3° aim error, otherwise
+         * razor-thin cuts would be recommended that no human can hit twice.
+         * Forgiving shots sort first, but a thin-but-verified pot still beats
+         * no recommendation at all. */
+        let robust = true;
+        for (const da of [-0.005, 0.005]) {
+          const pr2 = sim.predictShot(cue.id, Math.cos(s.angle + da), Math.sin(s.angle + da), speed, { top: 0, side: 0 }, { cueBounces: 2, objBounces: 2, maxTime: 6, dt: SIM_DT });
+          if (!(pr2.object && pr2.object.ballId === s.ball.id && pr2.object.potted)) { robust = false; break; }
+        }
+        s.robust = robust;
         s.pocket = pr.object.pocket;
         s.objectDir = pr.object.dir;
         s.ghost = pr.object.ghost;
         verified.push(s);
       }
     }
+    verified.sort((a, b) => (b.required - a.required) || ((b.robust ? 1 : 0) - (a.robust ? 1 : 0)) || (b.cut - a.cut) || (a.dist - b.dist));
     this._solKey = key;
     this._sols = verified;
     return verified;
@@ -1773,6 +1884,8 @@ export class Game {
       this.ghost.visible = false;
       this.ghostRing.visible = false;
       this.solRing.visible = false;
+      if (this.pocketRings) for (const m of this.pocketRings) m.visible = false;
+      if (this.warnX) this.warnX.visible = false;
       this.snapped = false;
       return;
     }
@@ -1918,6 +2031,49 @@ export class Game {
       this.solRing.visible = false;
     }
     this.solObjectRibbon.update([], false);
+
+    /* Pocket outcome rings + illegal-contact X. Both are driven by the same
+     * forward simulation as the lines (never by geometry guesses), so they
+     * can never disagree with the shot. They are markers, not guide lines,
+     * so the at-most-three-lines budget is untouched. */
+    const showMarks = this.state === "aim" && !!cue && !!pred && lvl > 0;
+    const states = new Array(6).fill(0); // 0 = hide, 1 = good pot, 2 = bad pot
+    let warnBall = null;
+    if (showMarks) {
+      for (const { ball: id, pocket } of pred.allPocketed ?? []) {
+        /* pockets come from the prediction's shadow sim, so match by position */
+        const pi = this.sim.pockets.findIndex((p) => Math.hypot(p.x - pocket.x, p.z - pocket.z) < 1e-9);
+        if (pi < 0 || pi > 5) continue;
+        let bad = true;
+        if (id !== cue.id) {
+          const bm = this.ballMeshes.find((b) => b.ball.id === id);
+          bad = !(bm && this.isPotClean(bm));
+        }
+        states[pi] = bad ? 2 : (states[pi] === 2 ? 2 : 1);
+      }
+      if (pred.object) {
+        const bm = this.ballMeshes.find((b) => b.ball.id === pred.object.ballId);
+        if (bm && !this.isPotClean(bm)) warnBall = bm.ball;
+      }
+    }
+    if (this.pocketRings) {
+      this.sim.pockets.forEach((p, i) => {
+        const m = this.pocketRings[i];
+        if (!m) return;
+        if (!states[i]) { m.visible = false; return; }
+        m.material.color.setHex(states[i] === 2 ? 0xff3b3b : 0x2ee66b);
+        m.visible = true;
+      });
+    }
+    if (this.warnX) {
+      if (warnBall) {
+        this.warnX.position.set(warnBall.x, this.clothY + 0.002, warnBall.z);
+        this.warnX.scale.setScalar(1 + Math.sin(performance.now() * 0.006) * 0.08);
+        this.warnX.visible = true;
+      } else {
+        this.warnX.visible = false;
+      }
+    }
   }
 
   spawnRipple(x, z, color, scale = 1) {

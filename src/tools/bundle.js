@@ -197,9 +197,14 @@
     "src/tools/harness.js",
     "src/tools/levelcheck.js",
     "src/tools/regression.js",
+    "src/tools/adversarial.js",
+    "src/tools/release.js",
+    "src/tools/visual.js",
     "src/physics.js",
     "src/levels.js",
     "src/modes.js",
+    "src/missions.js",
+    "src/save.js",
     "src/rng.js",
   ];
 

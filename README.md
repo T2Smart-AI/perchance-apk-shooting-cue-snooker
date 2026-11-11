@@ -8,7 +8,9 @@ Simulateur de précision pour le billard snooker.
 ## 🚀 Fonctionnalités
 
 - **Gestion du Jeu** : Contrôles de lecture (Pause), aide (?) et réinitialisation de la progression.
-- **Précision du Tir** : Système de réglage fin (Fine ◀/▶) et verrouillage de la cible (Lock).
+- **Précision du Tir** : Système de réglage fin (Fine ◀/▶), molette de la souris et verrouillage de la cible (Lock).
+- **Contrôle du tir** : `1-step` (glisser-relâcher sur la table) ou `2-step` (viser d’abord, puis tirer la barre de puissance), au choix dans ⚙ Réglages.
+- **Tables** : 12 thèmes avec finitions de rebord (bois, laqué, marbre, carbone, métal) et baguettes lumineuses / incrustations.
 - **Personnalisation** : Accès au magasin de queues (Cue Shop) et réglages techniques (⚙).
 - **Progression** : Modes Mission et Bonus pour tester vos compétences.
 - **Configuration Physique** : Paramétrage des modes (Basic, Advanced, Auto) et niveaux d'intensité (High, Low).

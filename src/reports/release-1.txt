@@ -1,0 +1,8 @@
+release verification ok (2026-11-08T22:31:12.205Z)
+PASS  files (26 checked)
+PASS  manifest (7 assets)
+PASS  schemas (4 checked)
+PASS  regression (17 levels sampled)
+PASS  adversarial (92 checks)
+PASS  prediction (29 pots, 0 mismatches)
+PASS  sweep 930/1000

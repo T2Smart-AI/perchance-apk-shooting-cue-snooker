@@ -1,4 +1,5 @@
 import { mulberry32, hashString } from "./rng.js";
+import { TABLE_PARAMS } from "./physics.js";
 import {
   ballLayout, pickNumbers, chapterName, themeForLevel,
   LEVELS_PER_CHAPTER, TOTAL_LEVELS,
@@ -351,7 +352,10 @@ export function modeForBonus(k) {
 /* ------------------------------------------------------------------ */
 
 export function getBonusLevel(k, P) {
-  k = Math.max(1, Math.min(TOTAL_BONUS, Math.round(k)));
+  let kk = Math.round(k);
+  if (!Number.isFinite(kk)) kk = 1;
+  k = Math.max(1, Math.min(TOTAL_BONUS, kk));
+  P = P ?? TABLE_PARAMS;
   const milestone = milestoneFor(k);
   const mode = modeForBonus(k);
   const rnd = rndFor(k);

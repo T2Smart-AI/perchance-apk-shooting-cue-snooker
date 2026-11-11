@@ -1,5 +1,5 @@
 import * as THREE from "../vendor/p2gx5c-three_0.170.0.js";
-import { feltTexture, feltNormal, railShadowTexture, clothRoughness, woodTexture, textDecalTexture } from "./textures.js";
+import { feltTexture, feltNormal, railShadowTexture, clothRoughness, woodTexture, marbleTexture, carbonTexture, brushedTexture, textDecalTexture } from "./textures.js";
 
 export const TABLE_DEFAULTS = {
   halfLength: 1.27,
@@ -132,14 +132,45 @@ export function buildTable(theme, params = {}) {
     envMapIntensity: 0.22,
   });
 
-  const woodTex = woodTexture(theme.rail, { seed: 5, glossy: true });
-  woodTex.repeat.set(0.3, 0.3);
-  const woodMat = new THREE.MeshStandardMaterial({
-    map: woodTex,
-    roughness: 0.42,
-    metalness: 0.04,
-    envMapIntensity: 0.6,
-  });
+  const railStyle = theme.railStyle ?? { finish: "wood" };
+  const railColor = railStyle.color ?? theme.rail ?? "#5a3d22";
+  let railMat;
+  if (railStyle.finish === "marble") {
+    const t = marbleTexture(railColor, { seed: railStyle.seed ?? 5, vein: railStyle.vein ?? 1 });
+    t.repeat.set(0.5, 0.5);
+    railMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.3, metalness: 0.06, envMapIntensity: 0.9,
+      emissive: railColor, emissiveIntensity: 0.14 });
+  } else if (railStyle.finish === "carbon") {
+    const t = carbonTexture({ seed: railStyle.seed ?? 5 });
+    t.repeat.set(6, 1.4);
+    railMat = new THREE.MeshStandardMaterial({
+      map: t, color: railStyle.color ?? "#ffffff",
+      roughness: 0.46, metalness: 0.35, envMapIntensity: 0.9,
+    });
+  } else if (railStyle.finish === "metal") {
+    const t = brushedTexture(railColor, { seed: railStyle.seed ?? 5 });
+    t.repeat.set(0.4, 0.4);
+    railMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.34, metalness: 0.9, envMapIntensity: 1.1 });
+  } else if (railStyle.finish === "pearl") {
+    const t = marbleTexture(railColor, { seed: railStyle.seed ?? 5, vein: 0.35 });
+    t.repeat.set(0.4, 0.4);
+    railMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.3, metalness: 0.12, envMapIntensity: 1.1,
+      emissive: railColor, emissiveIntensity: 0.22 });
+  } else if (railStyle.finish === "lacquer") {
+    const t = woodTexture(railColor, { seed: railStyle.seed ?? 5, glossy: true });
+    t.repeat.set(0.3, 0.3);
+    railMat = new THREE.MeshStandardMaterial({ map: t, roughness: 0.13, metalness: 0.08, envMapIntensity: 1.25 });
+  } else {
+    const woodTex = woodTexture(railColor, { seed: railStyle.seed ?? 5, glossy: true });
+    woodTex.repeat.set(railStyle.stretch ? 0.15 : 0.3, railStyle.stretch ? 0.6 : 0.3);
+    railMat = new THREE.MeshStandardMaterial({
+      map: woodTex,
+      roughness: railStyle.roughness ?? 0.42,
+      metalness: 0.04,
+      envMapIntensity: 0.6,
+    });
+  }
+  const woodMat = railMat;
 
   const cushTex = feltTexture(theme.cushion, { seed: 17, fibers: 7000 });
   cushTex.repeat.set(7, 0.5);
@@ -236,6 +267,78 @@ export function buildTable(theme, params = {}) {
   rail.receiveShadow = true;
   group.add(rail);
 
+  /* ---------------- rail trim: LED strips, metal inlay, gem studs -------- */
+  const trim = theme.trim ?? {};
+  if (trim.led) {
+    /* Five glow segments on the rail tops, routed to dodge the side/corner
+     * pockets and the ball-return trough (which has its own lamp already). */
+    const ledMat = new THREE.MeshBasicMaterial({ color: trim.led });
+    const ledY = RH + 0.0016, ledW = 0.009, ledH = 0.0028;
+    const addLed = (x0, z0, x1, z1) => {
+      const len = Math.hypot(x1 - x0, z1 - z0);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(len, ledH, ledW), ledMat);
+      m.position.set((x0 + x1) / 2, ledY, (z0 + z1) / 2);
+      m.rotation.y = -Math.atan2(z1 - z0, x1 - x0);
+      group.add(m);
+    };
+    const zR = HW + CD + RW / 2;
+    const xR = HL + CD + RW / 2;
+    for (const s of [1, -1]) {
+      addLed(-OX + 0.07, zR * s, -0.11, zR * s);
+      addLed(0.11, zR * s, rackOuterX - 0.07, zR * s);
+    }
+    addLed(-xR, -0.48, -xR, 0.48);
+  }
+  if (trim.inlay) {
+    /* A slim metallic pinstripe following the rail top, routed around both
+     * the playing area and the ball-return opening. */
+    const band = areaShape(
+      roundedRectAB(-OX + 0.018, rackOuterX - 0.018, -(OZ - 0.018), OZ - 0.018, 0.05, 6),
+      [
+        roundedRect(0, 0, HL + CD + 0.024, HW + CD + 0.024, 0.045, 6),
+        roundedRectAB(rackX0 - 0.004, rackX1 + 0.004, -(rackHalfZ + 0.004), rackHalfZ + 0.004, 0.01, 4),
+      ]
+    );
+    const inlay = new THREE.Mesh(
+      new THREE.ShapeGeometry(band),
+      new THREE.MeshStandardMaterial({ color: trim.inlay, roughness: 0.24, metalness: 1, envMapIntensity: 1.5 })
+    );
+    inlay.rotation.x = -Math.PI / 2;
+    inlay.position.y = RH + 0.0011;
+    inlay.receiveShadow = true;
+    group.add(inlay);
+  }
+  if (trim.studs) {
+    /* Shiny studs marching along the outer rail edge (instanced: 1 draw call),
+     * skipping the corner pockets and the ball-return opening. */
+    const pts = [];
+    const zO = OZ - 0.04, xO = OX - 0.04, xT = rackOuterX - 0.04;
+    for (const s of [1, -1]) {
+      for (let x = -OX + 0.09; x <= rackOuterX - 0.09; x += 0.13) {
+        if (Math.abs(x) < 0.12) continue; // side pocket mouth
+        /* the trough opening only spans |z| < rackHalfZ, so the outer-edge
+         * studs at |z| = OZ - 0.04 always sit on solid rail — no skip needed */
+        pts.push([x, zO * s]);
+      }
+    }
+    for (let z = -0.44; z <= 0.44; z += 0.13) pts.push([-xO, z]);
+    /* the +X end past the trough (x = rackOuterX - 0.04) is solid rail again */
+    for (let z = -0.44; z <= 0.44; z += 0.13) pts.push([xT, z]);
+    const studGeo = new THREE.OctahedronGeometry(0.0085, 0);
+    const studMat = new THREE.MeshStandardMaterial({
+      color: trim.studs, roughness: 0.15, metalness: 1, envMapIntensity: 2,
+      emissive: new THREE.Color(trim.studs).multiplyScalar(0.12),
+    });
+    const studs = new THREE.InstancedMesh(studGeo, studMat, Math.max(1, pts.length));
+    const m4 = new THREE.Matrix4();
+    pts.forEach((p, i) => {
+      m4.makeTranslation(p[0], RH + 0.004, p[1]);
+      studs.setMatrixAt(i, m4);
+    });
+    studs.instanceMatrix.needsUpdate = true;
+    group.add(studs);
+  }
+
   /* ---------------- cushions ---------------- */
   const fc = CD;
   const fs = CD * 0.6;
@@ -313,11 +416,14 @@ export function buildTable(theme, params = {}) {
   }
 
   /* ---------------- diamond sights ---------------- */
+  /* diamond sights pick up the rail LED colour when the theme has one, so the
+   * whole rail reads as one lit piece */
+  const sightGlow = trim.led ?? null;
   const sightMat = new THREE.MeshStandardMaterial({
-    color: theme.rim ?? "#e8e8e8",
+    color: sightGlow ?? theme.rim ?? "#e8e8e8",
     roughness: 0.42,
     metalness: 0.5,
-    emissive: new THREE.Color(theme.rim ?? "#ffffff").multiplyScalar(0.04),
+    emissive: new THREE.Color(sightGlow ?? theme.rim ?? "#ffffff").multiplyScalar(sightGlow ? 0.85 : 0.04),
   });
   const sightGeo = new THREE.CircleGeometry(0.016, 4);
   const addSight = (x, z) => {
